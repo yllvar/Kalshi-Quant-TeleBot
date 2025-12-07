@@ -1,12 +1,15 @@
 import pandas as pd
 import numpy as np
 import logging
+import time
 from typing import List
 from config import BANKROLL, NEWS_SENTIMENT_THRESHOLD, STAT_ARBITRAGE_THRESHOLD, VOLATILITY_THRESHOLD, MAX_POSITION_SIZE_PERCENTAGE, STOP_LOSS_PERCENTAGE
 from news_analyzer import NewsSentimentAnalyzer
 from arbitrage_analyzer import StatisticalArbitrageAnalyzer
 from volatility_analyzer import VolatilityAnalyzer
 from risk_manager import RiskManager
+from market_data_streamer import MarketDataStreamer
+from performance_analytics import PerformanceAnalytics, Trade
 
 class Trader:
     def __init__(self, api, notifier, logger, bankroll):
@@ -19,6 +22,30 @@ class Trader:
         self.arbitrage_analyzer = StatisticalArbitrageAnalyzer()
         self.volatility_analyzer = VolatilityAnalyzer()
         self.risk_manager = RiskManager(bankroll)
+
+        # Phase 3: Enhanced market data and performance tracking
+        self.market_data_streamer = MarketDataStreamer(api, update_interval=60)  # Update every minute
+        self.performance_analytics = PerformanceAnalytics()
+
+        # Subscribe to market data updates for real-time monitoring
+        self.market_data_streamer.add_subscriber(self._on_market_data_update)
+
+    def _on_market_data_update(self, updated_markets: List[str], all_market_data: Dict[str, Any]):
+        """Handle real-time market data updates."""
+        # Check for stop-loss triggers on open positions
+        current_prices = {market_id: data.current_price
+                         for market_id, data in all_market_data.items()}
+
+        self.check_positions_for_risk_management(current_prices)
+
+        # Log significant market movements
+        for market_id in updated_markets:
+            if market_id in all_market_data:
+                market_data = all_market_data[market_id]
+                if market_data.price_change_pct and abs(market_data.price_change_pct) > 2.0:
+                    self.logger.info(f"Market movement: {market_data.title} "
+                                   f"changed {market_data.price_change_pct:.2f}% "
+                                   f"to ${market_data.current_price:.2f}")
 
     def analyze_market(self, market_data):
         # Enhanced analysis with news sentiment
@@ -182,11 +209,26 @@ class Trader:
             self.logger.info(f"Executing {strategy} trade: {action} {quantity} units of {event_id} "
                            f"at ${price:.2f}")
 
+            # Generate unique trade ID
+            trade_id = f"{strategy}_{event_id}_{int(time.time())}"
+
             # Execute the trade via API (placeholder for now)
             if action.lower() == 'buy':
                 self.logger.info(f"BUY ORDER: {quantity} units of {event_id} at ${price:.2f}")
             elif action.lower() == 'sell':
                 self.logger.info(f"SELL ORDER: {quantity} units of {event_id} at ${price:.2f}")
+
+            # Record trade in performance analytics
+            trade = Trade(
+                trade_id=trade_id,
+                market_id=event_id,
+                strategy=strategy,
+                side=action.lower(),
+                quantity=quantity,
+                entry_price=price,
+                confidence=trade_decision.get('confidence', 0.5)
+            )
+            self.performance_analytics.record_trade(trade)
 
             # Store position locally for basic tracking
             self.current_positions[event_id] = {
@@ -196,7 +238,8 @@ class Trader:
                 'strategy': strategy,
                 'stop_loss_price': self.risk_manager.calculate_stop_loss_price(
                     price, action.lower() == 'buy'
-                )
+                ),
+                'trade_id': trade_id
             }
 
             # Send notification
@@ -254,6 +297,11 @@ class Trader:
         # Update bankroll
         self.risk_manager.current_bankroll += pnl
 
+        # Record trade closure in performance analytics
+        trade_id = position.get('trade_id')
+        if trade_id:
+            self.performance_analytics.close_trade(trade_id, exit_price, reason)
+
         # Remove from positions
         del self.current_positions[market_id]
 
@@ -269,158 +317,5 @@ class Trader:
         Get portfolio status with basic risk metrics.
         """
         return self.risk_manager.get_portfolio_status()
-
-    # Placeholder methods for future strategies - will be implemented in Phase 1
-    def _news_sentiment_analysis(self, news_data):
-        """
-        Placeholder for news sentiment analysis - now handled by NewsSentimentAnalyzer
-        This method is kept for backward compatibility but delegates to the new analyzer
-        """
-        self.logger.info("News sentiment analysis now handled by NewsSentimentAnalyzer")
-        return 0.7  # Default positive sentiment
-
-    def _statistical_arbitrage(self, market_data):
-        """
-        Find statistical arbitrage opportunities in market data
-        """
-        if not market_data or 'markets' not in market_data:
-            return []
-
-        markets = market_data['markets']
-        if len(markets) < 2:
-            return []  # Need at least 2 markets for arbitrage
-
-        # Prepare market data with price history for arbitrage analysis
-        # Note: In a real implementation, you'd need historical price data
-        # For now, we'll simulate with current prices and some noise
-        arbitrage_ready_markets = []
-
-        for market in markets[:10]:  # Limit to first 10 markets for performance
-            market_id = market.get('id')
-            current_price = market.get('current_price', 0.5)
-
-            if market_id and current_price:
-                # Generate synthetic price history for demonstration
-                # In production, this would come from historical data
-                price_history = self._generate_price_history(current_price)
-
-                arbitrage_ready_markets.append({
-                    'id': market_id,
-                    'title': market.get('title', ''),
-                    'current_price': current_price,
-                    'price_history': price_history
-                })
-
-        if len(arbitrage_ready_markets) < 2:
-            return []
-
-        # Find arbitrage opportunities
-        opportunities = self.arbitrage_analyzer.find_arbitrage_opportunities(arbitrage_ready_markets)
-
-        self.logger.info(f"Found {len(opportunities)} arbitrage opportunities")
-        return opportunities
-
-    def _generate_price_history(self, current_price: float, periods: int = 100) -> List[float]:
-        """
-        Generate synthetic price history for arbitrage analysis.
-        In production, this would be real historical data.
-        """
-        # Start with a random walk around the current price
-        prices = [current_price]
-
-        # Generate random walk with mean reversion
-        for i in range(periods - 1):
-            # Add some noise with slight mean reversion
-            change = np.random.normal(0, 0.02) - 0.001 * (prices[-1] - current_price)
-            new_price = max(0.01, min(0.99, prices[-1] + change))  # Keep in [0.01, 0.99]
-            prices.append(new_price)
-
-        return prices
-
-    def _volatility_analysis(self, market_data):
-        """
-        Analyze volatility patterns for trading opportunities
-        """
-        if not market_data or 'markets' not in market_data:
-            return None
-
-        markets = market_data['markets']
-        if not markets:
-            return None
-
-        # Analyze volatility for the first few markets
-        volatility_opportunities = []
-
-        for market in markets[:5]:  # Limit analysis for performance
-            market_id = market.get('id')
-            current_price = market.get('current_price', 0.5)
-
-            if market_id and current_price:
-                # Prepare market data for volatility analysis
-                price_history = self._generate_price_history(current_price, periods=150)  # More data for volatility
-
-                market_data_for_analysis = {
-                    'id': market_id,
-                    'title': market.get('title', ''),
-                    'current_price': current_price,
-                    'price_history': price_history
-                }
-
-                # Analyze volatility
-                volatility_result = self.volatility_analyzer.analyze_market_volatility(market_data_for_analysis)
-
-                if 'error' not in volatility_result:
-                    # Check if this presents a trading opportunity
-                    trade_decision = self.volatility_analyzer.should_trade_based_on_volatility(
-                        volatility_result, risk_tolerance=0.6
-                    )
-
-                    if trade_decision['should_trade']:
-                        volatility_opportunities.append({
-                            'market': market_data_for_analysis,
-                            'volatility_analysis': volatility_result,
-                            'trade_decision': trade_decision
-                        })
-
-        if not volatility_opportunities:
-            return None
-
-        # Return the highest confidence opportunity
-        best_opportunity = max(volatility_opportunities,
-                              key=lambda x: x['trade_decision']['confidence'])
-
-        self.logger.info(f"Found {len(volatility_opportunities)} volatility-based opportunities")
-
-        # Return the trade decision for the best opportunity
-        decision = best_opportunity['trade_decision']
-        decision.update({
-            'market_data': best_opportunity['market'],
-            'volatility_analysis': best_opportunity['volatility_analysis']
-        })
-
-        return decision
-
-    def run_trading_strategy(self):
-        """
-        Main trading strategy orchestration with multiple quantitative strategies
-        Priority: News Sentiment → Statistical Arbitrage → Volatility Analysis
-        """
-        self.logger.info("Running multi-strategy trading system: News Sentiment + Arbitrage + Volatility")
-
-        # Get market data from API
-        market_data = self.api.fetch_market_data()
-        if not market_data:
-            self.logger.info("No market data available")
-            return
-
-        # Run multi-strategy analysis
-        trade_decision = self._make_trade_decision(market_data)
-
-        if trade_decision:
-            strategy_name = trade_decision.get('strategy', 'unknown')
-            self.logger.info(f"Executing trade via {strategy_name} strategy")
-            self.execute_trade(trade_decision)
-        else:
-            self.logger.info("No profitable opportunities found across all strategies")
 
 

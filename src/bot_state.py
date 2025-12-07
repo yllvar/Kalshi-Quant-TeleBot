@@ -68,6 +68,21 @@ def fetch_status(api: KalshiAPI) -> Dict[str, Any]:
         "balance_summary": balance.get("summary", {}),
         "positions_count": positions.get("count", 0),
         "active_strategies": ["news_sentiment", "statistical_arbitrage", "volatility_based"],
+        "risk_management": {
+            "kelly_criterion_enabled": True,
+            "dynamic_position_sizing": True,
+            "stop_loss_protection": True,
+            "take_profit_scaling": False,  # Simplified for Phase 2
+            "max_position_size_pct": 10.0,
+            "stop_loss_pct": 5.0
+        },
+        "phase3_features": {
+            "real_time_market_data": True,
+            "market_data_streaming": True,
+            "performance_analytics": True,
+            "advanced_reporting": True,
+            "market_movement_tracking": True
+        },
         "timestamp": time.time(),
     }
 
