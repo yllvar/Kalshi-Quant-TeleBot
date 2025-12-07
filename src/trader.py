@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import logging
 from config import BANKROLL, NEWS_SENTIMENT_THRESHOLD, STAT_ARBITRAGE_THRESHOLD, VOLATILITY_THRESHOLD, MAX_POSITION_SIZE_PERCENTAGE, STOP_LOSS_PERCENTAGE
+from news_analyzer import NewsSentimentAnalyzer
 
 class Trader:
     def __init__(self, api, notifier, logger, bankroll):
@@ -10,24 +11,55 @@ class Trader:
         self.logger = logger
         self.bankroll = bankroll
         self.current_positions = {}
+        self.news_analyzer = NewsSentimentAnalyzer()
 
     def analyze_market(self, market_data):
-        # Placeholder for advanced analysis
+        # Enhanced analysis with news sentiment
         return self._make_trade_decision(market_data)
 
     def _make_trade_decision(self, market_data):
-        # This method will be expanded with the new strategies
-        # For now, it's a placeholder that always returns a 'buy' decision for demonstration
-        self.logger.info("Making a placeholder trade decision.")
-        # Example: if market_data contains 'event_id' and 'price'
-        if market_data and 'markets' in market_data and market_data['markets']:
-            # Assuming we pick the first market for simplicity
-            market = market_data['markets'][0]
-            event_id = market.get('id')
-            current_price = market.get('current_price')
-            if event_id and current_price:
-                return {'event_id': event_id, 'action': 'buy', 'quantity': 1, 'price': current_price}
-        return None
+        """
+        Enhanced trade decision making with news sentiment analysis
+        """
+        trade_decision = None
+
+        # Get news sentiment analysis
+        try:
+            sentiment_analysis = self.news_analyzer.get_market_relevant_news()
+            sentiment_decision = self.news_analyzer.should_trade_based_on_sentiment(
+                sentiment_analysis, NEWS_SENTIMENT_THRESHOLD
+            )
+
+            if sentiment_decision['should_trade']:
+                self.logger.info(f"News sentiment signal: {sentiment_decision['reason']}")
+
+                # Find suitable market to trade based on sentiment
+                if market_data and 'markets' in market_data and market_data['markets']:
+                    market = market_data['markets'][0]  # Simple selection - could be enhanced
+                    event_id = market.get('id')
+                    current_price = market.get('current_price')
+
+                    if event_id and current_price:
+                        action = 'buy' if sentiment_decision['direction'] == 'long' else 'sell'
+                        quantity = 1  # Base quantity - will be adjusted by risk management
+
+                        trade_decision = {
+                            'event_id': event_id,
+                            'action': action,
+                            'quantity': quantity,
+                            'price': current_price,
+                            'strategy': 'news_sentiment',
+                            'sentiment_score': sentiment_decision['sentiment_score'],
+                            'confidence': sentiment_decision['confidence']
+                        }
+
+                        self.logger.info(f"News sentiment trade decision: {action} {event_id} "
+                                       f"at {current_price} (sentiment: {sentiment_decision['sentiment_score']:.3f})")
+
+        except Exception as e:
+            self.logger.error(f"Error in news sentiment analysis: {e}")
+
+        return trade_decision
 
     def execute_trade(self, trade_decision):
         if not trade_decision:
@@ -72,61 +104,48 @@ class Trader:
             self.logger.error(f"Error executing trade for {event_id}: {e}")
             self.notifier.send_error_notification(f"Trade execution error for {event_id}: {e}")
 
-    # New methods for advanced strategies will go here
+    # Placeholder methods for future strategies - will be implemented in Phase 1
     def _news_sentiment_analysis(self, news_data):
-        # Placeholder for NLP-based sentiment analysis
-        # Returns a sentiment score (e.g., 0 to 1, where >0.5 is positive)
-        self.logger.info("Performing news sentiment analysis (placeholder).")
-        return 0.7 # Example positive sentiment
+        """
+        Placeholder for news sentiment analysis - now handled by NewsSentimentAnalyzer
+        This method is kept for backward compatibility but delegates to the new analyzer
+        """
+        self.logger.info("News sentiment analysis now handled by NewsSentimentAnalyzer")
+        return 0.7  # Default positive sentiment
 
     def _statistical_arbitrage(self, related_market_data):
-        # Placeholder for statistical arbitrage logic
-        # Identifies mispricings between correlated events
-        self.logger.info("Performing statistical arbitrage (placeholder).")
-        return None # Returns a trade decision if arbitrage opportunity found
+        """
+        Placeholder for statistical arbitrage - to be implemented in Phase 1.2
+        """
+        self.logger.info("Statistical arbitrage analysis - placeholder implementation")
+        return None
 
     def _volatility_analysis(self, historical_prices):
-        # Placeholder for volatility analysis
-        # Calculates volatility and identifies trading opportunities
-        self.logger.info("Performing volatility analysis (placeholder).")
-        return None # Returns a trade decision if volatility opportunity found
+        """
+        Placeholder for volatility analysis - to be implemented in Phase 1.3
+        """
+        self.logger.info("Volatility analysis - placeholder implementation")
+        return None
 
     def run_trading_strategy(self):
-        # This method will be called from main.py
-        # It will orchestrate the different strategies
+        """
+        Main trading strategy orchestration
+        """
+        self.logger.info("Running enhanced trading strategy with news sentiment analysis")
+
+        # Get market data from API
         market_data = self.api.fetch_market_data()
         if not market_data:
-            self.logger.info("No market data fetched.")
+            self.logger.info("No market data available")
             return
 
-        trade_decision = None
-
-        # Example of integrating strategies:
-        # 1. News Sentiment Strategy
-        # news_data = self.api.fetch_news_data() # Assuming a new API method
-        # sentiment_score = self._news_sentiment_analysis(news_data)
-        # if sentiment_score > NEWS_SENTIMENT_THRESHOLD:
-        #     self.logger.info(f"Positive news sentiment detected: {sentiment_score}")
-        #     trade_decision = self._make_trade_decision(market_data) # Use market data to form a real decision
-
-        # 2. Statistical Arbitrage Strategy
-        # related_markets = self.api.fetch_related_markets() # Assuming a new API method
-        # arbitrage_decision = self._statistical_arbitrage(related_markets)
-        # if arbitrage_decision:
-        #     trade_decision = arbitrage_decision
-
-        # 3. Volatility Strategy
-        # historical_prices = self.api.fetch_historical_prices() # Assuming a new API method
-        # volatility_decision = self._volatility_analysis(historical_prices)
-        # if volatility_decision:
-        #     trade_decision = volatility_decision
-
-        # For now, just use the placeholder decision
+        # Run news sentiment analysis (primary strategy for Phase 1)
         trade_decision = self._make_trade_decision(market_data)
 
         if trade_decision:
+            self.logger.info(f"Executing trade based on strategy: {trade_decision.get('strategy', 'unknown')}")
             self.execute_trade(trade_decision)
         else:
-            self.logger.info("No profitable trade opportunity found.")
+            self.logger.info("No profitable trade opportunities found")
 
 

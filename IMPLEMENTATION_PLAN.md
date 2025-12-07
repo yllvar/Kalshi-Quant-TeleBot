@@ -77,31 +77,30 @@ The Kalshi Advanced Trading Bot is a sophisticated quantitative trading system f
 
 ## 🚧 **Implementation Plan - Missing Features**
 
-### **Phase 1: Core Trading Strategies** 🔴 *HIGH PRIORITY*
+### **Phase 1: Core Trading Strategies** 🟡 *IN PROGRESS (1/3 Complete)*
 
-#### **1.1 News Sentiment Analysis Strategy**
-**Current Status:** Placeholder implementation
-**Location:** `src/trader.py::_news_sentiment_analysis()`
+#### **1.1 News Sentiment Analysis Strategy** ✅ *COMPLETED*
+**Current Status:** ✅ Fully implemented with NewsAPI integration
+**Files:** `src/news_analyzer.py`, `src/trader.py` (updated)
+**Features:**
+- ✅ News API integration (NewsAPI)
+- ✅ NLP processing (TextBlob for sentiment analysis)
+- ✅ Sentiment scoring algorithm with polarity and subjectivity
+- ✅ Event correlation with Kalshi markets via keyword matching
+- ✅ Confidence thresholds and signal filtering
+- ✅ Railway environment configuration
 
-**Implementation Plan:**
-```python
-def _news_sentiment_analysis(self, news_data):
-    """
-    Advanced NLP-based sentiment analysis for news events
-    """
-    # TODO: Implement
-    - News API integration (NewsAPI, Alpha Vantage)
-    - NLP processing (spaCy, NLTK, or Hugging Face transformers)
-    - Sentiment scoring algorithm
-    - Event correlation with Kalshi markets
-    - Confidence thresholds and signal filtering
-```
+**Implementation Details:**
+- Fetches news articles from NewsAPI with relevance filtering
+- Analyzes sentiment using TextBlob (polarity -1 to 1, subjectivity 0 to 1)
+- Generates trading signals based on configurable sentiment thresholds
+- Includes confidence scoring based on article volume and sentiment agreement
+- Integrated into main trading loop with proper error handling
 
-**Requirements:**
-- News data source API integration
-- NLP model for sentiment analysis
-- Correlation engine for news-to-market mapping
-- Signal confidence scoring
+**Dependencies Added:**
+- `newsapi-python` - News API client
+- `textblob` - Sentiment analysis
+- `requests-cache` - API request caching
 
 #### **1.2 Statistical Arbitrage Strategy**
 **Current Status:** Placeholder implementation

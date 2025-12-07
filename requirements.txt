@@ -4,3 +4,11 @@ python-telegram-bot
 pandas
 numpy
 dotenv
+
+# News and Sentiment Analysis
+newsapi-python
+transformers
+torch
+nltk
+textblob
+requests-cache

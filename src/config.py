@@ -5,8 +5,12 @@ def _get_env(name, default):
 
 KALSHI_API_KEY = _get_env("KALSHI_API_KEY", "your_kalshi_api_key")
 KALSHI_API_BASE_URL = _get_env("KALSHI_API_BASE_URL", "https://api.elections.kalshi.com/trade-api/v2")
-TELEGRAM_BOT_TOKEN = "your_telegram_bot_token"
-TELEGRAM_CHAT_ID = "your_chat_id"
+TELEGRAM_BOT_TOKEN = _get_env("TELEGRAM_BOT_TOKEN", "your_telegram_bot_token")
+TELEGRAM_CHAT_ID = _get_env("TELEGRAM_CHAT_ID", "your_chat_id")
+
+# News API Configuration
+NEWS_API_KEY = _get_env("NEWS_API_KEY", "your_news_api_key")
+NEWS_API_BASE_URL = "https://newsapi.org/v2"
 
 BANKROLL = 1000
 RISK_FACTOR = 1.0
