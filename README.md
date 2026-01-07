@@ -21,7 +21,7 @@
 
 ## Overview
 
-The Kalshi Advanced Quantitative Trading Bot is a sophisticated, professional-grade automated trading system designed specifically for event-based markets on the Kalshi platform. This bot leverages advanced quantitative strategies, machine learning techniques, and real-time data analysis to identify profitable trading opportunities while maintaining robust risk management protocols.
+The Kalshi Advanced Quantitative Trading Bot is a professional-grade automated trading system designed specifically for event-based markets on the Kalshi platform. This bot leverages advanced quantitative strategies, machine learning techniques, and real-time data analysis to identify profitable trading opportunities while maintaining robust risk management protocols.
 
 Built with a modular architecture, the system combines Python-based trading algorithms with a JavaScript Telegram bot interface for dynamic monitoring and interaction. The bot is designed to operate continuously, making data-driven decisions based on news sentiment analysis, statistical arbitrage opportunities, and volatility patterns in event-based markets.
 
